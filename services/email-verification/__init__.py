@@ -1,0 +1,1 @@
+"""Standalone email verification microservice."""
