@@ -1,6 +1,7 @@
 """Student organizations: school-email verification and memberships."""
 
 import hashlib
+import hmac
 import os
 import re
 import secrets
@@ -280,6 +281,35 @@ def organization_members(user_id: str, organization_id: int):
             ]
         }
     )
+
+
+@app.post("/internal/shared-membership")
+def shared_membership():
+    configured_token = os.getenv("ORGANIZATION_SERVICE_TOKEN")
+    request_token = request.headers.get("X-Internal-Token", "")
+    if not configured_token:
+        return error("ORGANIZATION_SERVICE_TOKEN is not configured", 503)
+    if not hmac.compare_digest(request_token, configured_token):
+        return error("Invalid internal service token", 401)
+    data = get_json()
+    viewer_id = data.get("viewer_id")
+    subject_id = data.get("subject_id")
+    if not isinstance(viewer_id, str) or not isinstance(subject_id, str):
+        return error("viewer_id and subject_id are required")
+    if viewer_id == subject_id:
+        return jsonify({"shared": True})
+    viewer_orgs = db.session.query(Membership.organization_id).filter_by(
+        user_id=viewer_id, is_verified=True
+    )
+    subject_orgs = db.session.query(Membership.organization_id).filter_by(
+        user_id=subject_id, is_verified=True
+    )
+    shared = db.session.query(Membership.id).filter(
+        Membership.organization_id.in_(viewer_orgs),
+        Membership.organization_id.in_(subject_orgs),
+        Membership.is_verified.is_(True),
+    ).first() is not None
+    return jsonify({"shared": shared})
 
 
 with app.app_context():

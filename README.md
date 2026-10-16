@@ -52,6 +52,21 @@ Set `JWT_SECRET`, `JWT_ISSUER`, `EMAIL_SERVICE_URL`, `EMAIL_SERVICE_TOKEN`, and
 - `GET /organizations/<organization_id>/members` for verified members to list
   other verified members.
 
+### Profiles service
+
+The profiles service runs on port `5005`. Each user has one profile record
+with public fields and organization-only fields. Public fields can be viewed
+without membership; organization-only fields require the viewer and profile
+owner to share a verified organization.
+
+Set `JWT_SECRET`, `JWT_ISSUER`, `ORGANIZATION_SERVICE_URL`, and
+`ORGANIZATION_SERVICE_TOKEN`. The service exposes:
+
+- `PUT /me/profile` to create or update the authenticated user's profile.
+- `GET /profiles/<user_id>` for public profile fields.
+- `GET /profiles/<user_id>/organization` for organization-only fields.
+- `GET /health` for health checks.
+
 ### Email verification service
 
 The email verification service owns SMTP delivery and runs on port `5003` by
