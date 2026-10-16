@@ -10,7 +10,9 @@ class EmailDeliveryError(RuntimeError):
     """Raised when SMTP cannot accept the verification email."""
 
 
-def send_verification_email(recipient: str, token: str) -> None:
+def send_verification_email(
+    recipient: str, token: str, verification_url: str | None = None
+) -> None:
     smtp_host = os.getenv("SMTP_HOST")
     smtp_from = os.getenv("SMTP_FROM")
     if not smtp_host or not smtp_from:
@@ -18,16 +20,22 @@ def send_verification_email(recipient: str, token: str) -> None:
             "SMTP_HOST and SMTP_FROM must be configured"
         )
 
-    verification_base_url = os.getenv(
-        "VERIFICATION_BASE_URL", "http://localhost:5002/verify"
+    verification_base_url = (
+        verification_url
+        or os.getenv("VERIFICATION_BASE_URL", "http://localhost:5002/verify")
     ).rstrip("/")
+    verification_link = (
+        verification_base_url
+        if verification_url
+        else f"{verification_base_url}/{token}"
+    )
     message = EmailMessage()
     message["Subject"] = "Verify your BSA account"
     message["From"] = smtp_from
     message["To"] = recipient
     message.set_content(
         "Verify your BSA account by opening this link:\n\n"
-        f"{verification_base_url}/{token}\n\n"
+        f"{verification_link}\n\n"
         "This link expires in 24 hours."
     )
 

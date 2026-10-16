@@ -29,6 +29,29 @@ the message. The authentication service exposes:
 - `POST /logout` to revoke a refresh token.
 - `GET /introspect` with an `Authorization: Bearer <access-token>` header.
 
+### Student organizations service
+
+The student organizations service runs on port `5004` and lets users belong to
+multiple organizations after verifying a matching school email address. It
+uses the auth service's JWT secret and issuer to identify users, but does not
+store passwords or duplicate auth users.
+
+Set `JWT_SECRET`, `JWT_ISSUER`, `EMAIL_SERVICE_URL`, `EMAIL_SERVICE_TOKEN`, and
+`SERVICE_URL` in the service environment. It exposes:
+
+- `POST /memberships` to add a school email. An organization is created
+  automatically from the email domain when needed.
+- `POST /organizations` to manually create an organization when custom
+  metadata is needed.
+- `GET /organizations` to list available organizations.
+- `POST /organizations/<organization_id>/memberships` remains available for
+  adding an email to a known organization.
+- `GET /verify/<token>` to complete school-email verification.
+- `GET /me/organizations` and `GET /me/memberships` to view the current user's
+  verified organizations and membership records.
+- `GET /organizations/<organization_id>/members` for verified members to list
+  other verified members.
+
 ### Email verification service
 
 The email verification service owns SMTP delivery and runs on port `5003` by

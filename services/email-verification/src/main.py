@@ -29,13 +29,18 @@ def send_verification():
         return error("A JSON request body is required")
     email = data.get("email")
     token = data.get("token")
+    verification_url = data.get("verification_url")
     if not isinstance(email, str) or not email.strip():
         return error("A recipient email is required")
     if not isinstance(token, str) or not token:
         return error("A verification token is required")
+    if verification_url is not None and (
+        not isinstance(verification_url, str) or not verification_url.startswith("http")
+    ):
+        return error("A valid verification URL is required")
 
     try:
-        send_verification_email(email.strip(), token)
+        send_verification_email(email.strip(), token, verification_url)
     except EmailDeliveryError as exc:
         return error(str(exc), 503)
     return jsonify({"message": "Verification email accepted"}), 202
