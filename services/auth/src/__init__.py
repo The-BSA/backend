@@ -1,0 +1,1 @@
+"""Authentication service application package."""
