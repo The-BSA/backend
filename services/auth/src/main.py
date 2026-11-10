@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 import jwt
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from email_service import EmailDeliveryError, send_verification_email
@@ -16,6 +17,7 @@ from models import RefreshToken, User, VerificationToken, db
 
 
 app = Flask(__name__)
+CORS(app)
 app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URL", "sqlite:///auth.db"
 )
