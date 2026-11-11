@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 import jwt
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 from models import Profile, db
 from organization_client import (
@@ -23,6 +24,28 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", "development-only-secret")
 app.config["JWT_ISSUER"] = os.getenv("JWT_ISSUER", "bsa-auth")
 db.init_app(app)
+
+# The frontend reads profiles straight from the browser. Only the read
+# endpoints under /profiles are opened up; /me/profile and /internal/profiles
+# stay unreachable from other origins.
+CORS(
+    app,
+    resources={
+        r"/profiles/*": {
+            "origins": [
+                origin.strip()
+                for origin in os.getenv(
+                    "CORS_ORIGINS",
+                    "http://localhost,http://127.0.0.1,"
+                    "http://localhost:80,http://127.0.0.1:80",
+                ).split(",")
+                if origin.strip()
+            ],
+            "allow_headers": ["Authorization", "Content-Type"],
+            "methods": ["GET", "OPTIONS"],
+        }
+    },
+)
 
 MAX_INTERNAL_PAGE_SIZE = 500
 
