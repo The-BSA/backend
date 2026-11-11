@@ -63,7 +63,7 @@ Set `JWT_SECRET`, `JWT_ISSUER`, `ORGANIZATION_SERVICE_URL`, and
 `ORGANIZATION_SERVICE_TOKEN`. Set `PROFILES_SERVICE_TOKEN` to let trusted
 services (the search service) list profiles. Optionally set `CORS_ORIGINS`
 (comma-separated; defaults to the local frontend) to choose which browser
-origins may call the read-only `/profiles/...` endpoints. The service exposes:
+origins may call the read-only `/profiles/...` endpoints and `PUT /me/profile`. The service exposes:
 
 - `PUT /me/profile` to create or update the authenticated user's profile.
 - `GET /profiles/<user_id>` for public profile fields.

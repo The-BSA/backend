@@ -25,25 +25,33 @@ app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", "development-only-secret")
 app.config["JWT_ISSUER"] = os.getenv("JWT_ISSUER", "bsa-auth")
 db.init_app(app)
 
-# The frontend reads profiles straight from the browser. Only the read
-# endpoints under /profiles are opened up; /me/profile and /internal/profiles
-# stay unreachable from other origins.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost,http://127.0.0.1,"
+        "http://localhost:80,http://127.0.0.1:80",
+    ).split(",")
+    if origin.strip()
+]
+
+# The frontend talks to this service straight from the browser, but only from
+# the origins above. The read endpoints under /profiles are open for GET, and
+# PUT /me/profile is open so the profile editor can save. /internal/profiles
+# stays unreachable from other origins.
 CORS(
     app,
     resources={
         r"/profiles/*": {
-            "origins": [
-                origin.strip()
-                for origin in os.getenv(
-                    "CORS_ORIGINS",
-                    "http://localhost,http://127.0.0.1,"
-                    "http://localhost:80,http://127.0.0.1:80",
-                ).split(",")
-                if origin.strip()
-            ],
+            "origins": CORS_ORIGINS,
             "allow_headers": ["Authorization", "Content-Type"],
             "methods": ["GET", "OPTIONS"],
-        }
+        },
+        r"/me/*": {
+            "origins": CORS_ORIGINS,
+            "allow_headers": ["Authorization", "Content-Type"],
+            "methods": ["PUT", "OPTIONS"],
+        },
     },
 )
 
