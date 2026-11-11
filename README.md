@@ -37,7 +37,14 @@ uses the auth service's JWT secret and issuer to identify users, but does not
 store passwords or duplicate auth users.
 
 Set `JWT_SECRET`, `JWT_ISSUER`, `EMAIL_SERVICE_URL`, `EMAIL_SERVICE_TOKEN`, and
-`SERVICE_URL` in the service environment. It exposes:
+`SERVICE_URL` in the service environment. Set `FRONTEND_URL` (default
+`http://localhost`) so the verification email links to the site's
+`/verify-organization/<token>` page, which calls `GET /verify/<token>`; leave it
+empty to link straight to this service instead. Optionally set `CORS_ORIGINS`
+(comma-separated; defaults to the local frontend) to choose which browser origins
+may call `POST /memberships`, `GET /organizations`, `GET /verify/<token>` and
+`GET /me/...`. Personal email providers such as gmail.com are rejected, because
+they can't show that someone belongs to a school. It exposes:
 
 - `POST /memberships` to add a school email. An organization is created
   automatically from the email domain when needed.

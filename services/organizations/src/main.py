@@ -11,6 +11,7 @@ from typing import Any, Callable
 
 import jwt
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 from email_service import EmailDeliveryError, send_verification_email
 from models import Membership, Organization, VerificationToken, db
@@ -26,10 +27,76 @@ app.config["JWT_ISSUER"] = os.getenv("JWT_ISSUER", "bsa-auth")
 app.config["SERVICE_URL"] = os.getenv("SERVICE_URL", "http://localhost:5004").rstrip(
     "/"
 )
+app.config["FRONTEND_URL"] = os.getenv("FRONTEND_URL", "http://localhost").rstrip("/")
 app.config["VERIFICATION_HOURS"] = int(
     os.getenv("ORGANIZATION_VERIFICATION_HOURS", "24")
 )
 db.init_app(app)
+
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost,http://127.0.0.1,"
+        "http://localhost:80,http://127.0.0.1:80",
+    ).split(",")
+    if origin.strip()
+]
+
+_CORS_HEADERS = ["Authorization", "Content-Type"]
+CORS(
+    app,
+    resources={
+        r"/memberships$": {
+            "origins": CORS_ORIGINS,
+            "allow_headers": _CORS_HEADERS,
+            "methods": ["POST", "OPTIONS"],
+        },
+        r"/me/.*": {
+            "origins": CORS_ORIGINS,
+            "allow_headers": _CORS_HEADERS,
+            "methods": ["GET", "OPTIONS"],
+        },
+        r"/organizations/?$": {
+            "origins": CORS_ORIGINS,
+            "allow_headers": _CORS_HEADERS,
+            "methods": ["GET", "OPTIONS"],
+        },
+        r"/verify/*": {
+            "origins": CORS_ORIGINS,
+            "allow_headers": _CORS_HEADERS,
+            "methods": ["GET", "OPTIONS"],
+        },
+    },
+)
+
+FREE_EMAIL_DOMAINS = frozenset(
+    {
+        "gmail.com", "googlemail.com",
+        "outlook.com", "hotmail.com", "live.com", "msn.com",
+        "hotmail.co.uk", "hotmail.fr", "outlook.fr",
+        "yahoo.com", "yahoo.co.uk", "yahoo.ca", "yahoo.fr", "ymail.com",
+        "rocketmail.com",
+        "icloud.com", "me.com", "mac.com",
+        "aol.com",
+        "proton.me", "protonmail.com", "pm.me",
+        "gmx.com", "gmx.net", "mail.com", "zoho.com", "yandex.com",
+        "fastmail.com", "hey.com", "tutanota.com", "tuta.com",
+        "comcast.net", "verizon.net", "att.net", "sbcglobal.net",
+        "bellsouth.net", "cox.net",
+    }
+)
+FREE_EMAIL_MESSAGE = (
+    "Please use your school email address. Personal email providers such as "
+    "gmail.com can't be used to join an organization."
+)
+
+
+def is_free_email_domain(domain: str) -> bool:
+    return any(
+        domain == blocked or domain.endswith("." + blocked)
+        for blocked in FREE_EMAIL_DOMAINS
+    )
 
 
 def error(message: str, status: int = 400):
@@ -129,7 +196,12 @@ def send_membership_verification(
             + timedelta(hours=app.config["VERIFICATION_HOURS"]),
         )
     )
-    verification_url = f"{app.config['SERVICE_URL']}/verify/{raw_token}"
+    if app.config["FRONTEND_URL"]:
+        verification_url = (
+            f"{app.config['FRONTEND_URL']}/verify-organization/{raw_token}"
+        )
+    else:
+        verification_url = f"{app.config['SERVICE_URL']}/verify/{raw_token}"
     try:
         send_verification_email(school_email, raw_token, verification_url)
     except EmailDeliveryError as exc:
@@ -147,6 +219,8 @@ def add_membership_by_email(user_id: str):
     domain = school_email_domain(school_email)
     if domain is None:
         return error("A valid school email is required")
+    if is_free_email_domain(domain):
+        return error(FREE_EMAIL_MESSAGE, 422)
 
     organization = Organization.query.filter_by(email_domain=domain).first()
     created = False
@@ -222,6 +296,8 @@ def add_membership(user_id: str, organization_id: int):
         return error("A valid school email is required")
     if domain != organization.email_domain:
         return error("School email must use the organization's email domain", 422)
+    if is_free_email_domain(domain):
+        return error(FREE_EMAIL_MESSAGE, 422)
     return send_membership_verification(user_id, organization, school_email)
 
 
