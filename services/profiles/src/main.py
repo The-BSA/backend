@@ -24,6 +24,8 @@ app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", "development-only-secret")
 app.config["JWT_ISSUER"] = os.getenv("JWT_ISSUER", "bsa-auth")
 db.init_app(app)
 
+MAX_INTERNAL_PAGE_SIZE = 500
+
 
 def error(message: str, status: int = 400):
     return jsonify({"error": message}), status
@@ -143,6 +145,37 @@ def get_organization_profile(viewer_id: str, user_id: str):
         if not allowed:
             return error("A shared verified organization is required", 403)
     return jsonify(organization_profile(profile))
+
+
+@app.get("/internal/profiles")
+def list_profiles_internal():
+    """Return full profiles for trusted services (e.g. search).
+
+    Callers are responsible for deciding which fields a viewer may see.
+    """
+    configured_token = os.getenv("PROFILES_SERVICE_TOKEN", "bsa")
+    request_token = request.headers.get("X-Internal-Token", "")
+    if not configured_token:
+        return error("PROFILES_SERVICE_TOKEN is not configured", 503)
+    if not hmac.compare_digest(request_token, configured_token):
+        return error("Invalid internal service token", 401)
+    try:
+        limit = int(request.args.get("limit", MAX_INTERNAL_PAGE_SIZE))
+        offset = int(request.args.get("offset", 0))
+    except ValueError:
+        return error("limit and offset must be integers")
+    limit = max(1, min(limit, MAX_INTERNAL_PAGE_SIZE))
+    offset = max(0, offset)
+    query = Profile.query.order_by(Profile.id)
+    profiles = query.offset(offset).limit(limit).all()
+    return jsonify(
+        {
+            "profiles": [organization_profile(profile) for profile in profiles],
+            "total": query.count(),
+            "limit": limit,
+            "offset": offset,
+        }
+    )
 
 
 @app.get("/health")

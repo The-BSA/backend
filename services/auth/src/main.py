@@ -22,7 +22,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
     "DATABASE_URL", "sqlite:///auth.db"
 )
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
+app.config["JWT_SECRET"] = os.getenv("JWT_SECRET", "development-only-secret")
 app.config["JWT_ISSUER"] = os.getenv("JWT_ISSUER", "bsa-auth")
 app.config["ACCESS_TOKEN_MINUTES"] = int(
     os.getenv("ACCESS_TOKEN_MINUTES", "15")

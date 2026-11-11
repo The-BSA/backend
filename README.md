@@ -60,11 +60,48 @@ without membership; organization-only fields require the viewer and profile
 owner to share a verified organization.
 
 Set `JWT_SECRET`, `JWT_ISSUER`, `ORGANIZATION_SERVICE_URL`, and
-`ORGANIZATION_SERVICE_TOKEN`. The service exposes:
+`ORGANIZATION_SERVICE_TOKEN`. Set `PROFILES_SERVICE_TOKEN` to let trusted
+services (the search service) list profiles. The service exposes:
 
 - `PUT /me/profile` to create or update the authenticated user's profile.
 - `GET /profiles/<user_id>` for public profile fields.
 - `GET /profiles/<user_id>/organization` for organization-only fields.
+- `GET /internal/profiles?limit=&offset=` returns full profiles (including
+  organization-only fields) to trusted services. It requires the
+  `X-Internal-Token` header to match `PROFILES_SERVICE_TOKEN`; callers must
+  apply their own visibility rules.
+- `GET /health` for health checks.
+
+### Search service
+
+The search service runs on port `5006`. It finds students by name or keyword
+and applies the same visibility rules as the profiles service. It stores no
+data of its own: it reads profiles from the profiles service and uses the
+viewer's own access token to ask the organizations service which verified
+organizations they share with each student.
+
+Set `JWT_SECRET`, `JWT_ISSUER`, `PROFILES_SERVICE_URL` (default
+`http://localhost:5005`), `PROFILES_SERVICE_TOKEN` (must match the profiles
+service), `ORGANIZATION_SERVICE_URL` (default `http://localhost:5004`), and
+optionally `CORS_ORIGINS` (comma-separated; defaults to the local frontend).
+
+- `GET /search` searches students. Anonymous requests search public fields
+  (display name and public bio). Requests with an `Authorization: Bearer
+  <access-token>` header also see organization-only fields (organization bio,
+  program, graduation year) for students who share a verified organization,
+  and may filter on them. An invalid token is rejected with `401` rather than
+  silently downgraded. Query parameters:
+  - `q`: keywords; every word must match the name, bio, or (where visible)
+    program or organization bio.
+  - `program`, `graduation_year`, `organization_id`: filters on
+    organization-only fields (login required; the viewer must belong to the
+    organization).
+  - `page` (default `1`) and `per_page` (default `12`, max `50`).
+
+  The response contains `results`, paging fields (`page`, `per_page`, `total`,
+  `total_pages`), `authenticated`, and `filters` (the organizations, programs,
+  and graduation years the viewer can filter by). Profiles with no display
+  name are not listed.
 - `GET /health` for health checks.
 
 ### Email verification service
